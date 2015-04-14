@@ -1,0 +1,26 @@
+[Unit]
+Description=akka-cluster@%i
+After=docker.service
+
+Requires=akka-cluster-discovery@%i.service
+
+[Service]
+User=core
+TimeoutStartSec=0
+KillMode=none
+
+EnvironmentFile=/etc/environment
+
+ExecStartPre=-/usr/bin/docker kill akka-cluster-%i
+ExecStartPre=-/usr/bin/docker rm akka-cluster-%i
+ExecStartPre=-/usr/bin/docker pull kasured/akka-cluster-dockerized
+
+ExecStartPre=/bin/sh -c "mkdir -p /home/core/akka-cluster-config; etcdctl ls /announce/services/ | xargs -L1 etcdctl get > /home/core/akka-cluster-config/seeds"
+
+ExecStart=/usr/bin/docker run --rm --name akka-cluster-%i -v /home/core/akka-cluster-config:/opt/akka-cluster/config:ro --env "APP_SEEDS_FILE=/opt/akka-cluster/config/seeds" --env "APP_PORT=%i" --env "APP_HOST=${COREOS_PRIVATE_IPV4}" kasured/akka-cluster-dockerized
+
+ExecStop=/usr/bin/docker stop akka-cluster-%i
+
+[X-Fleet]
+Conflicts=akka-cluster@*.service
+

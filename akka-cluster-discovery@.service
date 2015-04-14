@@ -1,0 +1,13 @@
+[Unit]
+Description=akka-cluster-discovery@%i
+BindsTo=akka-cluster@%i.service
+
+[Service]
+User=core
+EnvironmentFile=/etc/environment
+
+ExecStart=/bin/sh -c "while true; do etcdctl set /announce/services/akka-cluster-%i ${COREOS_PRIVATE_IPV4}:%i --ttl 60; sleep 45; done"
+ExecStop=/usr/bin/etcdctl rm /announce/services/akka-cluster-%i
+
+[X-Fleet]
+MachineOf=akka-cluster@%i.service
