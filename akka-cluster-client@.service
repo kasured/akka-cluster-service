@@ -1,0 +1,27 @@
+[Unit]
+Description=akka-cluster-client@%i
+After=docker.service
+
+Requires=akka-cluster-client-discovery@%i.service
+
+[Service]
+User=core
+TimeoutStartSec=0
+KillMode=none
+
+EnvironmentFile=/etc/environment
+
+ExecStartPre=-/usr/bin/docker kill akka-cluster-client-%i
+ExecStartPre=-/usr/bin/docker rm akka-cluster-client-%i
+ExecStartPre=-/usr/bin/docker pull kasured/akka-cluster-client
+
+ExecStartPre=/bin/sh -c "mkdir -p /home/core/akka-cluster-client-config; etcdctl ls /announce/services/ | xargs -L1 etcdctl get > /home/core/akka-cluster-client-config/contacts"
+
+ExecStart=/usr/bin/docker run --rm --name akka-cluster-client-%i -v /home/core/akka-cluster-client-config:/opt/akka-cluster-client/config:ro --env "CLUSTER_CONTACT_POINTS=/opt/akka-cluster-client/config/contacts" -p ${COREOS_PUBLIC_IPV4}%i:%i -p 8080:8080 --env "HTTP_SERVICE_PORT=8080" --env "HTTP_SERVICE_HOST=${COREOS_PUBLIC_IPV4}" --env "CLUSTER_CLIENT_SYSTEM_PORT=%i" --env "CLUSTER_CLIENT_SYSTEM_HOST=${COREOS_PRIVATE_IPv4}" kasured/akka-cluster-client
+
+ExecStop=/usr/bin/docker stop akka-cluster-client-%i
+
+[X-Fleet]
+Conflicts=akka-cluster@*.service
+Conflicts=akka-cluster-client@*.service
+
